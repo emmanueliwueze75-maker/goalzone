@@ -219,8 +219,7 @@ footer {
   <p>Demo interface — live scores are not connected yet.</p>
 </footer>
 
-<script>
-const API_BASE = "https://goalzone-api.emmanueliwueze75.workers.dev";
+<script>const API_BASE = "https://goalzone-api.emmanueliwueze75.workers.dev";
 const list = document.getElementById("matchList");
 let matches = [];
 
@@ -281,12 +280,8 @@ list.innerHTML = '<div class="match empty">Unable to load fixtures right now. Pl
 document.querySelectorAll(".filter").forEach(button => {
 button.addEventListener("click", () => {
 document.querySelectorAll(".filter").forEach(item => item.classList.remove("active"));
-button.classList.add("active");
-renderMatches(button.dataset.filter);
-});
-});
+button.classList.add(
 
-loadMatches();
 </script>
 
 </body>
