@@ -219,68 +219,101 @@ footer {
   <p>Demo interface — live scores are not connected yet.</p>
 </footer>
 
-<script>const API_BASE = "https://goalzone-api.emmanueliwueze75.workers.dev";
+<script>const API_URL = "https://sportscore.com/api/widget/matches/?sport=football&limit=50";
+
 const list = document.getElementById("matchList");
+const filterButtons = document.querySelectorAll(".filter");
+
 let matches = [];
+let activeFilter = "all";
 
-function renderMatches(filter = "all") {
-const filtered = filter === "all"
-? matches
-: matches.filter(match => match.statusType === filter);
+async function loadMatches() {
+    list.innerHTML = "<p>Loading football matches...</p>";
 
-if (!filtered.length) {
-list.innerHTML = '<div class="match empty">No matches found.</div>';
-return;
+    try {
+        const response = await fetch(API_URL);
+
+        if (!response.ok) {
+            throw new Error("Could not load matches.");
+        }
+
+        const data = await response.json();
+        matches = data.matches || [];
+
+        if (matches.length === 0) {
+            list.innerHTML = "<p>No matches available right now.</p>";
+            return;
+        }
+
+        displayMatches();
+    } catch (error) {
+        console.error("GoalZone error:", error);
+        list.innerHTML =
+            "<p>Unable to load matches. Please refresh and try again.</p>";
+    }
 }
 
-list.innerHTML = filtered.map(match => "<article class="match"> <div class="competition">${match.competition}</div> <div class="teams"> <div class="team">${match.home}</div> <div class="versus">${match.score}</div> <div class="team">${match.away}</div> </div> <div class="status">${match.label}</div> </article>").join("");
+function displayMatches() {
+    const filtered = matches.filter(match => {
+        if (activeFilter === "all") return true;
+        return (match.status || "").toLowerCase() === activeFilter;
+    });
+
+    if (filtered.length === 0) {
+        list.innerHTML = "<p>No matches in this category right now.</p>";
+        return;
+    }
+
+    list.innerHTML = filtered.map(match => {
+        const status = (match.status || "upcoming").toLowerCase();
+
+        const score = status === "live" || status === "finished"
+            ? `${match.home_score ?? 0} - ${match.away_score ?? 0}`
+            : "VS";
+
+        const statusText = match.status_text ||
+            (status === "live" ? "LIVE" :
+            status === "finished" ? "FULL TIME" : match.time || "UPCOMING");
+
+        return `
+            <div class="match-card">
+                <div class="match-league">
+                    ${match.competition || "Football"}
+                </div>
+
+                <div class="match-teams">
+                    <div class="team">
+                        ${match.home_logo ? `<img src="${match.home_logo}" alt="">` : ""}
+                        <span>${match.home || "Home"}</span>
+                    </div>
+
+                    <div class="score">${score}</div>
+
+                    <div class="team">
+                        ${match.away_logo ? `<img src="${match.away_logo}" alt="">` : ""}
+                        <span>${match.away || "Away"}</span>
+                    </div>
+                </div>
+
+                <div class="match-status ${status}">
+                    ${statusText}
+                </div>
+            </div>
+        `;
+    }).join("");
 }
 
-async function loadMatches(endpoint = "/fixtures") {
-list.innerHTML = '<div class="match empty">Loading football fixtures...</div>';
+filterButtons.forEach(button => {
+    button.addEventListener("click", () => {
+        filterButtons.forEach(item => item.classList.remove("active"));
+        button.classList.add("active");
 
-try {
-const response = await fetch(API_BASE + endpoint);
-const data = await response.json();
-
-if (!response.ok || data.errors && Object.keys(data.errors).length) {
-  throw new Error("Football data is temporarily unavailable. Please try again later.");
-}
-
-matches = (data.response || []).map(item => {
-  const fixture = item.fixture;
-  const status = fixture.status.short;
-  const live = ["1H", "HT", "2H", "ET", "P", "LIVE", "BT"].includes(status);
-  const finished = ["FT", "AET", "PEN"].includes(status);
-  const goals = item.goals || {};
-
-  return {
-    competition: item.league.name,
-    home: item.teams.home.name,
-    away: item.teams.away.name,
-    score: live || finished
-      ? `${goals.home ?? 0} - ${goals.away ?? 0}`
-      : "VS",
-    statusType: live ? "live" : finished ? "finished" : "upcoming",
-    label: live
-      ? `🔴 LIVE ${fixture.status.elapsed ?? ""}${fixture.status.elapsed != null ? "'" : ""}`
-      : finished
-        ? "FULL TIME"
-        : new Date(fixture.date).toLocaleString()
-  };
+        activeFilter = (button.dataset.filter || "all").toLowerCase();
+        displayMatches();
+    });
 });
 
-renderMatches(document.querySelector(".filter.active")?.dataset.filter || "all");
-
-} catch (error) {
-list.innerHTML = '<div class="match empty">Unable to load fixtures right now. Please try again later.</div>';
-}
-}
-
-document.querySelectorAll(".filter").forEach(button => {
-button.addEventListener("click", () => {
-document.querySelectorAll(".filter").forEach(item => item.classList.remove("active"));
-button.classList.add(
+loadMatches();
 
 </script>
 
